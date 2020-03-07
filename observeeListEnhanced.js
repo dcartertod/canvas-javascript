@@ -17,6 +17,7 @@ function getObservees(){
 	var lastUser = "";
 	var dataTablesScriptLoaded = false;
 	var $observeeTable = $("<table>", {id: "observeeTable", "class": "display", "style": "width:100%"});
+	var theTable;
 
 
 	loadDataTables();
@@ -89,7 +90,6 @@ function getObservees(){
 	// once we have the complete information about the user, we add them to the table
 	// another approach here would be to build an array suitable for passing to DataTables
 	function addUserToTable(user_id){
-		observeeList[user_id].lastAccess = (observeeList[user_id].lastAccess==null) ? "Never": Date.parse(observeeList[user_id].lastAccess).toLocaleString();
 		var studentName = observeeList[user_id].name;
 		var studentLastAccess = (observeeList[user_id].lastAccess==null) ? "Never": Date.parse(observeeList[user_id].lastAccess).toLocaleString();
 		
@@ -101,9 +101,9 @@ function getObservees(){
 				
 				$('<tr>', {id: user_id + "-" + enrollment.courseID}).append(
 					$('<td>').html(studentName),
-					$('<td>').data("studentLastAccess", observeeList[user_id].lastAccess).html(studentLastAccess),
+					$('<td>').attr("data-studentLastAccess", observeeList[user_id].lastAccess).html(studentLastAccess),
 					$('<td>').html("<a href=\"/courses/" + enrollment.courseID + "/grades/" + user_id + "\">" + enrollment.courseCode + "</a>"),
-					$('<td>').data("courseLastAccess", enrollment.lastAccess).text(courseLastAccess),
+					$('<td>').attr("data-courseLastAccess", enrollment.lastAccess).text(courseLastAccess),
 					$('<td>').text(enrollment.currentGrade),
 					$('<td>').text(enrollment.currentScore),
 					$('<td>', {id: user_id + "-" + enrollment.courseID + "-missing"}).text(enrollment.missingSubmissions)
@@ -126,7 +126,7 @@ function getObservees(){
 				$(".observees-list.collectionViewItems").hide();
 				// add the table to the existing container
 				$(".observees-list-container").append($observeeTable);
-				$("#observeeTable").DataTable({
+				theTable = $("#observeeTable").DataTable({
 						"order": [[ 0, "asc" ]]
 					});
 			}
@@ -273,3 +273,5 @@ function getObservees(){
 if (/^\/profile\/observees$/.test(window.location.pathname) ){
 	getObservees();
 }
+
+
