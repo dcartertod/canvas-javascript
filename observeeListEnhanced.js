@@ -1,7 +1,6 @@
 // not 100% up on modern javascript design patterns, but enclosing all functions in the getObservees parent function
 // this would generate quite a bit of traffic if you have a lot of observees
-
-// this is an enhancement to the default Observees list, which is just a list of names.
+// have to think about how this scales.
 
 function getObservees(){
 	
@@ -92,28 +91,29 @@ function getObservees(){
 	function addUserToTable(user_id){
 		observeeList[user_id].lastAccess = (observeeList[user_id].lastAccess==null) ? "Never": Date.parse(observeeList[user_id].lastAccess).toLocaleString();
 		var studentName = observeeList[user_id].name;
-		var studentLastAccess = observeeList[user_id].lastAccess;
+		var studentLastAccess = (observeeList[user_id].lastAccess==null) ? "Never": Date.parse(observeeList[user_id].lastAccess).toLocaleString();
 		
 
 		$.each ( observeeList[user_id].enrollments, function (key, enrollment) {
 				enrollment.currentGrade = (enrollment.currentGrade==null) ? "": enrollment.currentGrade;
 				enrollment.currentScore = (enrollment.currentScore==null) ? "": enrollment.currentScore;
-				enrollment.lastAccess = (enrollment.lastAccess==null) ? "Never": Date.parse(enrollment.lastAccess).toLocaleString();
+				var courseLastAccess = (enrollment.lastAccess==null) ? "Never": Date.parse(enrollment.lastAccess).toLocaleString();
 				
-				$('<tr>').append(
+				$('<tr>', {id: user_id + "-" + enrollment.courseID}).append(
 					$('<td>').html(studentName),
-					$('<td>').html(studentLastAccess),
+					$('<td>').data("studentLastAccess", observeeList[user_id].lastAccess).html(studentLastAccess),
 					$('<td>').html("<a href=\"/courses/" + enrollment.courseID + "/grades/" + user_id + "\">" + enrollment.courseCode + "</a>"),
-					$('<td>').text(enrollment.lastAccess),
+					$('<td>').data("courseLastAccess", enrollment.lastAccess).text(courseLastAccess),
 					$('<td>').text(enrollment.currentGrade),
 					$('<td>').text(enrollment.currentScore),
-					$('<td>').text(enrollment.missingSubmissions)
+					$('<td>', {id: user_id + "-" + enrollment.courseID + "-missing"}).text(enrollment.missingSubmissions)
 					).appendTo($observeeTable[0].tBodies[0]);
 				//studentName = "<span style=\"opacity: 0;\">" + studentName + "</span>";
 				//studentLastAccess = "<span style=\"opacity: 0;\">" + studentLastAccess + "</span>";
 			});
 			
 		// best guess that we are working on the last rows of data
+		// ajaxStop waits till all is done, but we could introduce a delay in getting missing assignment data
 		$(document).ajaxStop(function () {
 			if (!dataTableInitialized && user_id == lastUser && dataTablesScriptLoaded){
 
@@ -152,6 +152,11 @@ function getObservees(){
 		$.each ( observeeList[user_id].enrollments, function (key, enrollment) {
 				if (enrollment.courseCode == course_code){
 						enrollment.missingSubmissions ++;
+						var tc = $("#" + user_id + "-" + enrollment.courseID + "-missing");
+						tc.text(enrollment.missingSubmissions);
+						if (theTable.cell){
+						    theTable.cell("#" + user_id + "-" + enrollment.courseID + "-missing").data(enrollment.missingSubmissions);
+						}
 				}
 			});
 	}
@@ -209,7 +214,10 @@ function getObservees(){
 						});
 					// get any missing submission data - separate API call, although I would guess it is technically possible in graphql
 					// I just could not work out how
-					getMissingSubmissions(user_id);
+					// build the row before we have the missing submission data
+					addUserToTable(user_id);
+					setTimeout(getMissingSubmissions, 1000 + Math.floor(Math.random() * 500), user_id);
+					// getMissingSubmissions(user_id);
 				}
 			});
 	}
@@ -237,10 +245,11 @@ function getObservees(){
 						// cannot do simple loops because ajax is asynchronous
 						getMissingSubmissions (user_id, nextlink);
 					}
-					else {
+					// else {
 						// last page so we are ready to add the user data to the table
-						addUserToTable(user_id);
-					}
+						// moved to getEnrollmentsByGraphQL
+						// addUserToTable(user_id);
+					// }
 				}
 			});
 	}
