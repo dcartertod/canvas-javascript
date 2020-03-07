@@ -101,9 +101,9 @@ function getObservees(){
 				
 				$('<tr>', {id: user_id + "-" + enrollment.courseID}).append(
 					$('<td>').html(studentName),
-					$('<td>').attr("data-studentLastAccess", observeeList[user_id].lastAccess).html(studentLastAccess),
+					$('<td>').attr("data-order", observeeList[user_id].lastAccess).html(studentLastAccess),
 					$('<td>').html("<a href=\"/courses/" + enrollment.courseID + "/grades/" + user_id + "\">" + enrollment.courseCode + "</a>"),
-					$('<td>').attr("data-courseLastAccess", enrollment.lastAccess).text(courseLastAccess),
+					$('<td>').attr("data-order", enrollment.lastAccess).text(courseLastAccess),
 					$('<td>').text(enrollment.currentGrade),
 					$('<td>').text(enrollment.currentScore),
 					$('<td>', {id: user_id + "-" + enrollment.courseID + "-missing"}).text(enrollment.missingSubmissions)
