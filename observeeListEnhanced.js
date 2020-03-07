@@ -154,7 +154,7 @@ function getObservees(){
 						enrollment.missingSubmissions ++;
 						var tc = $("#" + user_id + "-" + enrollment.courseID + "-missing");
 						tc.text(enrollment.missingSubmissions);
-						if (theTable.cell){
+						if (typeof theTable !== 'undefined'){
 						    theTable.cell("#" + user_id + "-" + enrollment.courseID + "-missing").data(enrollment.missingSubmissions);
 						}
 				}
