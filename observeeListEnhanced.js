@@ -91,19 +91,38 @@ function getObservees(){
 	// another approach here would be to build an array suitable for passing to DataTables
 	function addUserToTable(user_id){
 		var studentName = observeeList[user_id].name;
-		var studentLastAccess = (observeeList[user_id].lastAccess==null) ? "Never": Date.parse(observeeList[user_id].lastAccess).toLocaleString();
+		var studentLastAccess;
+		var studentLastAccessForSorting;
+		if (observeeList[user_id].lastAccess==null){
+			studentLastAccess="Never";
+			studentLastAccessForSorting="1970-01-01T00:00:00-05:00";
+		}
+		else {
+			studentLastAccess = Date.parse(observeeList[user_id].lastAccess).toLocaleString();
+			studentLastAccessForSorting = observeeList[user_id].lastAccess;
+		}
 		
 
 		$.each ( observeeList[user_id].enrollments, function (key, enrollment) {
 				enrollment.currentGrade = (enrollment.currentGrade==null) ? "": enrollment.currentGrade;
 				enrollment.currentScore = (enrollment.currentScore==null) ? "": enrollment.currentScore;
-				var courseLastAccess = (enrollment.lastAccess==null) ? "Never": Date.parse(enrollment.lastAccess).toLocaleString();
+				var courseLastAccess;
+				var courseLastAccessForSorting;
+				if (enrollment.lastAccess == null){
+					courseLastAccess="Never";
+					courseLastAccessForSorting="1970-01-01T00:00:00-05:00";
+				}
+				else {
+					courseLastAccess = Date.parse(enrollment.lastAccess).toLocaleString();
+					courseLastAccessForSorting = enrollment.lastAccess;					
+				}
+				
 				
 				$('<tr>', {id: user_id + "-" + enrollment.courseID}).append(
 					$('<td>').html(studentName),
-					$('<td>').attr("data-order", observeeList[user_id].lastAccess).html(studentLastAccess),
+					$('<td>').attr("data-order", studentLastAccessForSorting).html(studentLastAccess),
 					$('<td>').html("<a href=\"/courses/" + enrollment.courseID + "/grades/" + user_id + "\">" + enrollment.courseCode + "</a>"),
-					$('<td>').attr("data-order", enrollment.lastAccess).text(courseLastAccess),
+					$('<td>').attr("data-order", courseLastAccessForSorting).text(courseLastAccess),
 					$('<td>').text(enrollment.currentGrade),
 					$('<td>').text(enrollment.currentScore),
 					$('<td>', {id: user_id + "-" + enrollment.courseID + "-missing"}).text(enrollment.missingSubmissions)
