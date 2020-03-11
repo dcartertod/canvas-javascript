@@ -1,6 +1,7 @@
 // not 100% up on modern javascript design patterns, but enclosing all functions in the getObservees parent function
 // this would generate quite a bit of traffic if you have a lot of observees
 // have to think about how this scales.
+// interesting code on https://community.canvaslms.com/docs/DOC-11182-parents-requested-this-at-my-school-multiple-students
 
 function getObservees(){
 	
@@ -17,7 +18,7 @@ function getObservees(){
 	var lastUser = "";
 	var dataTablesScriptLoaded = false;
 	var $observeeTable = $("<table>", {id: "observeeTable", "class": "display", "style": "width:100%"});
-	var theTable;
+	
 
 
 	loadDataTables();
@@ -144,10 +145,41 @@ function getObservees(){
 				// hide the existing list
 				$(".observees-list.collectionViewItems").hide();
 				// add the table to the existing container
+				$(".observees-list-container").append($('<label>', {text: "Not logged in for X days: "})).append($('<input>', {id: "olderThan", type: "text"}));
+
 				$(".observees-list-container").append($observeeTable);
-				theTable = $("#observeeTable").DataTable({
+				observeeTable = $("#observeeTable").DataTable({
 						"order": [[ 0, "asc" ]]
 					});
+				$.fn.dataTableExt.afnFiltering.push(
+					function( oSettings, aData, iDataIndex ) {
+						var now = new Date();
+						
+						var olderThan = $("#olderThan").val();
+						
+						//console.log(olderThan);
+
+						if (olderThan != ""){
+							var sevenDays = now - (1000 * 60 * 60 * 24 * olderThan);
+							sevenDays = new Date(sevenDays);
+					 
+							var lastLoginDTColumn = 1;
+							var lastDate=aData[lastLoginDTColumn];
+							lastDate = new Date(lastDate);
+							
+							if ( lastDate.getTime() < sevenDays.getTime() ) {
+								//console.log("true");
+								return true;
+							}
+							else {
+								return false;
+							}
+						}
+						
+						return true;
+					}
+				);
+				$('#olderThan').blur( function() { observeeTable.draw(); } );
 			}
 		});
 	}
@@ -173,12 +205,22 @@ function getObservees(){
 						enrollment.missingSubmissions ++;
 						var tc = $("#" + user_id + "-" + enrollment.courseID + "-missing");
 						tc.text(enrollment.missingSubmissions);
-						if (typeof theTable !== 'undefined'){
-						    theTable.cell("#" + user_id + "-" + enrollment.courseID + "-missing").data(enrollment.missingSubmissions);
+						// the item doesn't exist in the DOM sometimes, have to update the table
+						$observeeTable.find(tc).text(enrollment.missingSubmissions);
+						if (typeof observeeTable !== 'undefined'){
+						    observeeTable.cell("#" + user_id + "-" + enrollment.courseID + "-missing").data(enrollment.missingSubmissions);
+							observeeTable.draw();
 						}
 				}
 			});
 	}
+	
+	function updateTable(){
+		observeeTable.draw();
+	}
+	
+	getObservees.addToMissingSubmissionsCtForUser = addToMissingSubmissionsCtForUser;
+	getObservees.updateTable = updateTable;
 
 	// use graphql API enables us to get coursecode and lastactivity in addition to grades
 	// also, as best I can tell this does not use pagination
@@ -290,7 +332,7 @@ function getObservees(){
 }
 
 if (/^\/profile\/observees$/.test(window.location.pathname) ){
+	// probably unneccessary
+	var observeeTable;
 	getObservees();
 }
-
-
