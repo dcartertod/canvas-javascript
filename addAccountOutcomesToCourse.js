@@ -21,65 +21,82 @@ function getAccountOutcomes(targetCourseId = "8", subjectNumber = 'ADJ 127', acc
 	if ( nextlink != "" ){
 		url = nextlink;
 	}
-	$.ajax({
-	url: url,
-	type: 'GET',
-	success: function(data,textStatus,xhr) {
-			// console.log(data);
-			var subjectGroupUrl;
-			$.each ( data, function (key, item) {
-				// console.log(item);
-				// cache or match
-				if ( item.parent_outcome_group && item.parent_outcome_group.id == 1 && item.vendor_guid == subject ){
-						subjectGroupUrl = item.subgroups_url;
-						console.log (item);
-						setTimeout(getSubjectNumberOutcomes, delay*delayct, subjectGroupUrl, subjectNumber, targetCourseId);
-						return;
+	
+	if (sessionStorage[subject]){
+		var subjectGroupUrl = sessionStorage[subject];
+		getSubjectNumberOutcomes(sessionStorage[subject], subjectNumber, targetCourseId);
+	}
+	else {
+		$.ajax({
+		url: url,
+		type: 'GET',
+		success: function(data,textStatus,xhr) {
+				// console.log(data);
+				var subjectGroupUrl;
+				$.each ( data, function (key, item) {
+					// console.log(item);
+					// cache or match
+					subjectGroupUrl = item.subgroups_url;
+					sessionStorage[vendor_guid] = subjectGroupUrl;
+					if ( item.parent_outcome_group && item.parent_outcome_group.id == 1 && item.vendor_guid == subject ){
+							//console.log (item);
+							setTimeout(getSubjectNumberOutcomes, delay*delayct, subjectGroupUrl, subjectNumber, targetCourseId);
+							return;
+					}
+				});
+				var nextlink = getNextLink(xhr);
+				if (nextlink !== '' && subjectGroupUrl == null){
+					  setTimeout(getAccountOutcomes, delay*delayct, targetCourseId, subjectNumber, account, nextlink);
 				}
-			});
-			var nextlink = getNextLink(xhr);
-			if (nextlink !== '' && subjectGroupUrl == null){
-				  setTimeout(getAccountOutcomes, delay*delayct, targetCourseId, subjectNumber, account, nextlink);
 			}
-		}
-	});
+		});
+	}
 }
 
 function getSubjectNumberOutcomes(subjectGroupUrl, subjectNumber, targetCourseId ="8", foundItem = {"id": "0","vendor_guid": "0"}){
 	delayct ++;
-	$.ajax({
-	url: subjectGroupUrl,
-	type: 'GET',
-	success: function(data,textStatus,xhr) {
-			// var foundItem = {"id": "0","vendor_guid": "0"};
-			$.each ( data, function (key, item) {
-				if ( item.title == subjectNumber ){
-						// there may be multiple with the same name, but different vendor_guid based on date
-						// we want the most recent
-						if (foundItem.vendor_guid < item.vendor_guid){
-							foundItem = item;
-						}
+	
+	if (sessionStorage[subjectNumber]){
+		var accountGroupId = sessionStorage[subjectNumber];
+		getCourseOutcomeGroups (targetCourseId, subjectNumber, accountGroupId);
+	}
+	else {
+		$.ajax({
+		url: subjectGroupUrl,
+		type: 'GET',
+		success: function(data,textStatus,xhr) {
+				// var foundItem = {"id": "0","vendor_guid": "0"};
+				$.each ( data, function (key, item) {
+					sessionStorage[item.title] = item.id;
+					if ( item.title == subjectNumber ){
+							// there may be multiple with the same name, but different vendor_guid based on date
+							// we want the most recent
+							if (foundItem.vendor_guid < item.vendor_guid){
+								foundItem = item;
+							}
+					}
+				});
+				// console.log(foundItem);
+				// if (foundItem.id > "0"){
+				// 	console.log (foundItem);
+				// }
+				var nextlink = getNextLink(xhr);
+				if (nextlink !== ''){
+					  setTimeout(getSubjectNumberOutcomes, delay*delayct, nextlink, subjectNumber, targetCourseId, foundItem);
 				}
-			});
-			// console.log(foundItem);
-			// if (foundItem.id > "0"){
-			// 	console.log (foundItem);
-			// }
-			var nextlink = getNextLink(xhr);
-			if (nextlink !== ''){
-				  setTimeout(getSubjectNumberOutcomes, delay*delayct, nextlink, subjectNumber, targetCourseId, foundItem);
+				else if (foundItem.id > "0") {
+					// do something with foundItem
+					// console.log(foundItem);
+					var accountGroupId = foundItem.id;
+					// sessionStorage[subjectNumber] = accountGroupId;
+					setTimeout(getCourseOutcomeGroups, delay*delayct, targetCourseId, subjectNumber, accountGroupId);
+				}
+				else {
+					console.log("No outcomes found for " + subjectNumber);
+				}
 			}
-			else if (foundItem.id > "0") {
-				// do something with foundItem
-				console.log(foundItem);
-				var accountGroupId = foundItem.id;
-				setTimeout(getCourseOutcomeGroups, delay*delayct, targetCourseId, subjectNumber, accountGroupId);
-			}
-			else {
-				console.log("No outcomes found for " + subjectNumber);
-			}
-		}
-	});
+		});
+	}
 }
 
 function getCourseOutcomeGroups(targetCourseId, subjectNumber, accountGroupId, nextlink="", courseImportUrl){
