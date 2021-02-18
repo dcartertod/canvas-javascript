@@ -23,8 +23,9 @@ function getAccountOutcomes(targetCourseId = "8", subjectNumber = 'ADJ 127', acc
 	}
 	
 	if (sessionStorage[subject]){
+		delayct--;
 		var subjectGroupUrl = sessionStorage[subject];
-		getSubjectNumberOutcomes(sessionStorage[subject], subjectNumber, targetCourseId);
+		getSubjectNumberOutcomes(subjectGroupUrl, subjectNumber, targetCourseId);
 	}
 	else {
 		$.ajax({
@@ -33,19 +34,21 @@ function getAccountOutcomes(targetCourseId = "8", subjectNumber = 'ADJ 127', acc
 		success: function(data,textStatus,xhr) {
 				// console.log(data);
 				var subjectGroupUrl;
+				var flFound=false;
 				$.each ( data, function (key, item) {
 					// console.log(item);
 					// cache or match
 					subjectGroupUrl = item.subgroups_url;
-					sessionStorage[vendor_guid] = subjectGroupUrl;
+					sessionStorage[item.vendor_guid] = subjectGroupUrl;
 					if ( item.parent_outcome_group && item.parent_outcome_group.id == 1 && item.vendor_guid == subject ){
 							//console.log (item);
+							flFound=true;
 							setTimeout(getSubjectNumberOutcomes, delay*delayct, subjectGroupUrl, subjectNumber, targetCourseId);
 							return;
 					}
 				});
 				var nextlink = getNextLink(xhr);
-				if (nextlink !== '' && subjectGroupUrl == null){
+				if (nextlink !== '' && !flFound){
 					  setTimeout(getAccountOutcomes, delay*delayct, targetCourseId, subjectNumber, account, nextlink);
 				}
 			}
@@ -58,6 +61,7 @@ function getSubjectNumberOutcomes(subjectGroupUrl, subjectNumber, targetCourseId
 	
 	if (sessionStorage[subjectNumber]){
 		var accountGroupId = sessionStorage[subjectNumber];
+		delayct--;
 		getCourseOutcomeGroups (targetCourseId, subjectNumber, accountGroupId);
 	}
 	else {
@@ -99,6 +103,17 @@ function getSubjectNumberOutcomes(subjectGroupUrl, subjectNumber, targetCourseId
 	}
 }
 
+function getCourseRootOutcomeGroup(accountGroupId, targetCourseId){
+	var url = '/api/v1/courses/' + targetCourseId + '/root_outcome_group';
+	$.ajax({
+		url: url,
+		type: 'GET',
+		success: function(data) {
+				setTimeout(importOutcomeGroupToCourse, delay*delayct, data.import_url, accountGroupId, targetCourseId);
+			}
+		});
+}
+
 function getCourseOutcomeGroups(targetCourseId, subjectNumber, accountGroupId, nextlink="", courseImportUrl){
 	delayct ++;
 	var flHasGroupAlready = false;
@@ -111,29 +126,35 @@ function getCourseOutcomeGroups(targetCourseId, subjectNumber, accountGroupId, n
 	type: 'GET',
 	success: function(data,textStatus,xhr) {
 			// console.log(data);
-			$.each ( data, function (key, item) {
-				// console.log(item);
-				if (item.title == subjectNumber){
-					flHasGroupAlready = true;
-				}
-				if (! item.parent_outcome_group){
-					// course root outcome
-					courseImportUrl = item.import_url;
-				}
-				
-			});
-			var nextlink = getNextLink(xhr);
-			if (flHasGroupAlready){
-				console.log("Course already has an outcome group for " + subjectNumber);
-				console.log("/courses/" + targetCourseId + "/outcomes");
-				return;
-			}
-			else if (nextlink !== ''){
-				setTimeout(getCourseOutcomeGroups, delay*delayct, targetCourseId, subjectNumber, accountGroupId, nextlink, courseImportUrl);
+			// if data is empty, then need to access the root_outcome_group
+			console.log(data);
+			if (data.length == 0){
+				getCourseRootOutcomeGroup(accountGroupId, targetCourseId);
 			}
 			else {
-				// console.log ('import to course');
-				setTimeout(importOutcomeGroupToCourse, delay*delayct, courseImportUrl, accountGroupId, targetCourseId);
+				$.each ( data, function (key, item) {
+					// console.log(item);
+					if (item.title && item.title == subjectNumber){
+						flHasGroupAlready = true;
+					}
+					if (! item.parent_outcome_group){
+						// course root outcome
+						courseImportUrl = item.import_url;
+					}
+				});
+				var nextlink = getNextLink(xhr);
+				if (flHasGroupAlready){
+					console.log("Course already has an outcome group for " + subjectNumber);
+					console.log("/courses/" + targetCourseId + "/outcomes");
+					return;
+				}
+				else if (nextlink !== ''){
+					setTimeout(getCourseOutcomeGroups, delay*delayct, targetCourseId, subjectNumber, accountGroupId, nextlink, courseImportUrl);
+				}
+				else {
+					console.log ('import to course');
+					setTimeout(importOutcomeGroupToCourse, delay*delayct, courseImportUrl, accountGroupId, targetCourseId);
+				}
 			}
 		}
 	});
@@ -151,6 +172,7 @@ function importOutcomeGroupToCourse(courseImportUrl, accountGroupId, targetCours
 		success: function(data) {
 			console.log('Outcome Group was queued to import to course.');
 			console.log("/courses/" + targetCourseId + "/outcomes");
+			console.log(data);
 			}
 		});
 }
@@ -170,3 +192,5 @@ var delayct = 0;
 var course={"id": 8, "sis_course_id": "SO261.UMS.211.01.SP20"};
 
 importOutcomesToCourse(course);
+
+
